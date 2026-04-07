@@ -1,40 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useWins } from '@/hooks/useWins'
-import { useThoughts } from '@/hooks/useThoughts'
-import { useContacts } from '@/hooks/useContacts'
-import { useInfluenceAnalytics } from '@/hooks/useInfluenceAnalytics'
-import { motion } from 'framer-motion'
+/**
+ * StatsPage
+ * 
+ * Страница статистики — использует глобальный DataContext
+ * Данные загружаются один раз при монтировании Layout
+ * Переключение между вкладками мгновенное, без загрузки
+ */
+
+import { useState } from 'react'
+import { useData } from '@/contexts/DataContext'
+import { useGoalStats } from '@/hooks/useGoalStats'
 import { BarChart3, Loader2 } from 'lucide-react'
 import { WinsStats } from '@/components/stats/WinsStats'
 import { ThoughtsStats } from '@/components/stats/ThoughtsStats'
-import { ContactsStats } from '@/components/stats/ContactsStats'
-import { InfluenceMap } from '@/components/influence/InfluenceMap'
+import { GoalsStats } from '@/components/stats/GoalsStats'
 
-type TabType = 'wins' | 'thoughts' | 'contacts' | 'influence'
+type TabType = 'wins' | 'thoughts' | 'goals'
 
 export default function StatsPage() {
+    // Активная вкладка (по умолчанию — победы)
     const [activeTab, setActiveTab] = useState<TabType>('wins')
-    const { wins, loading: winsLoading, loadWins } = useWins()
-    const { thoughts, loading: thoughtsLoading, loadThoughts } = useThoughts()
-    const { contacts, interactions, loading: contactsLoading, loadContacts } = useContacts()
-    const { influenceScores, loading: influenceLoading, calculateInfluenceVectors } = useInfluenceAnalytics()
 
-    useEffect(() => {
-        loadWins()
-        loadThoughts()
-        loadContacts()
-    }, [])
+    // Получаем данные из глобального контекста — без повторной загрузки
+    const { wins, thoughts, winsLoading, thoughtsLoading } = useData()
 
-    useEffect(() => {
-        if (activeTab === 'influence') {
-            calculateInfluenceVectors()
-        }
-    }, [activeTab])
+    // Статистика целей остаётся в своём хуке
+    const { stats, areaStats, priorityStats, upcomingDeadlines, overduedGoals } = useGoalStats()
 
-    const loading = winsLoading || thoughtsLoading || contactsLoading
+    // Объединяем состояния загрузки
+    const loading = winsLoading || thoughtsLoading
 
+    // Показываем лоадер пока данные загружаются (только первый раз)
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -45,23 +42,19 @@ export default function StatsPage() {
 
     return (
         <div className="min-h-screen p-6 pb-32">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="max-w-4xl mx-auto space-y-6"
-            >
-                {/* Header */}
+            <div className="max-w-4xl mx-auto space-y-6">
+                {/* Заголовок страницы */}
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
                         <BarChart3 className="w-8 h-8 text-primary" strokeWidth={2} />
                         <h1 className="text-3xl font-bold tracking-tight">Статистика</h1>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Анализ твоего прогресса и влияния окружения
+                        Анализ твоего прогресса и личного роста
                     </p>
                 </div>
 
-                {/* Tabs */}
+                {/* Вкладки для переключения между разделами статистики */}
                 <div className="flex gap-2 overflow-x-auto pb-2">
                     <TabButton
                         active={activeTab === 'wins'}
@@ -76,43 +69,44 @@ export default function StatsPage() {
                         🧠 Мысли
                     </TabButton>
                     <TabButton
-                        active={activeTab === 'contacts'}
-                        onClick={() => setActiveTab('contacts')}
+                        active={activeTab === 'goals'}
+                        onClick={() => setActiveTab('goals')}
                     >
-                        👥 Окружение
-                    </TabButton>
-                    <TabButton
-                        active={activeTab === 'influence'}
-                        onClick={() => setActiveTab('influence')}
-                    >
-                        🎯 Вектор Влияния
+                        🎯 Цели
                     </TabButton>
                 </div>
 
-                {/* Content */}
+                {/* Контент выбранной вкладки */}
                 <div className="pt-4">
+                    {/* Статистика побед: графики, распределение по размеру, стрики */}
                     {activeTab === 'wins' && <WinsStats wins={wins as any} />}
+
+                    {/* Статистика мыслей: настроение, тренды, динамика */}
                     {activeTab === 'thoughts' && <ThoughtsStats thoughts={thoughts} />}
-                    {activeTab === 'contacts' && (
-                        <ContactsStats contacts={contacts} interactions={interactions} />
-                    )}
-                    {activeTab === 'influence' && (
-                        <>
-                            {influenceLoading ? (
-                                <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                </div>
-                            ) : (
-                                <InfluenceMap scores={influenceScores} />
-                            )}
-                        </>
+
+                    {/* Статистика целей: прогресс, дедлайны, приоритеты */}
+                    {activeTab === 'goals' && (
+                        <GoalsStats
+                            stats={stats}
+                            areaStats={areaStats}
+                            priorityStats={priorityStats}
+                            upcomingDeadlines={upcomingDeadlines}
+                            overduedGoals={overduedGoals}
+                        />
                     )}
                 </div>
-            </motion.div>
+            </div>
         </div>
     )
 }
 
+/**
+ * TabButton — кнопка переключения вкладок
+ * 
+ * @param active - активна ли вкладка
+ * @param onClick - обработчик клика
+ * @param children - содержимое кнопки (текст + эмодзи)
+ */
 function TabButton({
     active,
     onClick,

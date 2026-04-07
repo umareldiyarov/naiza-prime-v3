@@ -9,7 +9,6 @@ const tabs = [
     { href: '/wins', label: 'Победы', icon: Trophy },
     { href: '/thoughts', label: 'Мысли', icon: Brain },
     { href: '/goals', label: 'Цели', icon: Target },
-    { href: '/contacts', label: 'Окружение', icon: Users },
     { href: '/stats', label: 'Статистика', icon: BarChart3 },
     { href: '/profile', label: 'Профиль', icon: User },
 ]

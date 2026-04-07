@@ -30,22 +30,21 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
         <AnimatePresence>
             {open && (
                 <>
-                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={() => onOpenChange(false)}
-                        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+                        className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
                     />
-                    {/* Dialog */}
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
                             transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
-                            className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                            className="relative w-full max-w-md"
                         >
                             {children}
                         </motion.div>
@@ -64,7 +63,7 @@ export function DialogContent({ children, className, ...props }: DialogContentPr
     return (
         <div
             className={cn(
-                'glass rounded-3xl shadow-2xl border border-border/50 overflow-hidden',
+                'glass rounded-3xl shadow-2xl border border-border/50 flex flex-col max-h-[85vh] overflow-hidden',
                 className
             )}
             {...props}
@@ -83,7 +82,7 @@ export function DialogHeader({ children, onClose, className, ...props }: DialogH
     return (
         <div
             className={cn(
-                'flex items-center justify-between p-6 border-b border-border/50',
+                'flex items-center justify-between p-6 border-b border-border/50 flex-shrink-0',
                 className
             )}
             {...props}
@@ -138,7 +137,7 @@ interface DialogBodyProps extends React.HTMLAttributes<HTMLDivElement> {
 export function DialogBody({ children, className, ...props }: DialogBodyProps) {
     return (
         <div
-            className={cn('p-6 overflow-y-auto max-h-[calc(85vh-140px)]', className)}
+            className={cn('p-6 overflow-y-auto flex-1 min-h-0', className)}
             {...props}
         >
             {children}

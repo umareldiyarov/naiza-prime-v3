@@ -1,5 +1,17 @@
 'use client'
 
+/**
+ * ProfilePage
+ * 
+ * Страница профиля пользователя:
+ * - Информация о пользователе (имя, email, аватар)
+ * - Быстрая статистика (победы, мысли, цели)
+ * - Прогресс по целям
+ * - Информация о приложении
+ * - Настройки уведомлений
+ * - Управление аккаунтом (выход, удаление)
+ */
+
 import { useEffect } from 'react'
 import { useProfile } from '@/hooks/useProfile'
 import { Button } from '@/components/ui/button'
@@ -9,10 +21,10 @@ import { GoalsProgressWidget } from '@/components/profile/GoalsProgressWidget'
 import { AboutApp } from '@/components/profile/AboutApp'
 import { SettingsSection } from '@/components/profile/SettingsSection'
 import { DangerZone } from '@/components/profile/DangerZone'
-import { motion } from 'framer-motion'
 import { User, LogOut, Loader2 } from 'lucide-react'
 
 export default function ProfilePage() {
+    // Получаем данные профиля и методы из хука
     const {
         profile,
         user,
@@ -27,10 +39,12 @@ export default function ProfilePage() {
         deleteAccount
     } = useProfile()
 
+    // Загружаем данные профиля при монтировании компонента
     useEffect(() => {
         loadProfile()
     }, [])
 
+    // Показываем лоадер пока данные загружаются
     if (loading || !profile || !user) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -39,6 +53,7 @@ export default function ProfilePage() {
         )
     }
 
+    // Обработчик загрузки аватара
     const handleUploadAvatar = async (file: File) => {
         const { error } = await uploadAvatar(file)
         if (error) {
@@ -46,6 +61,7 @@ export default function ProfilePage() {
         }
     }
 
+    // Обработчик удаления аватара
     const handleDeleteAvatar = async () => {
         const { error } = await deleteAvatar()
         if (error) {
@@ -53,6 +69,7 @@ export default function ProfilePage() {
         }
     }
 
+    // Обработчик обновления данных профиля (имя, настройки)
     const handleUpdateProfile = async (data: any) => {
         const { error } = await updateProfile(data)
         if (error) {
@@ -60,6 +77,7 @@ export default function ProfilePage() {
         }
     }
 
+    // Обработчик удаления аккаунта
     const handleDeleteAccount = async () => {
         const { error } = await deleteAccount()
         if (error) {
@@ -69,12 +87,8 @@ export default function ProfilePage() {
 
     return (
         <div className="min-h-screen p-6 pb-32">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="max-w-2xl mx-auto space-y-6"
-            >
-                {/* Header */}
+            <div className="max-w-2xl mx-auto space-y-6">
+                {/* Заголовок страницы */}
                 <div className="space-y-1">
                     <div className="flex items-center gap-3">
                         <User className="w-8 h-8 text-primary" strokeWidth={2} />
@@ -85,7 +99,7 @@ export default function ProfilePage() {
                     </p>
                 </div>
 
-                {/* Профиль */}
+                {/* Шапка профиля: аватар, имя, email */}
                 <ProfileHeader
                     profile={profile}
                     user={user}
@@ -95,22 +109,22 @@ export default function ProfilePage() {
                     onUpdateProfile={handleUpdateProfile}
                 />
 
-                {/* Быстрая статистика */}
+                {/* Виджет быстрой статистики: количество побед, мыслей, целей */}
                 <QuickStatsWidget stats={quickStats} />
 
-                {/* Прогресс целей */}
+                {/* Виджет прогресса по активным целям */}
                 <GoalsProgressWidget />
 
-                {/* О приложении */}
+                {/* Модальное окно с информацией о приложении */}
                 <AboutApp />
 
-                {/* Настройки */}
+                {/* Секция настроек (уведомления и другие параметры) */}
                 <SettingsSection
                     profile={profile}
                     onUpdateProfile={handleUpdateProfile}
                 />
 
-                {/* Кнопка выхода */}
+                {/* Кнопка выхода из аккаунта */}
                 <Button
                     onClick={signOut}
                     variant="outline"
@@ -120,12 +134,12 @@ export default function ProfilePage() {
                     Выйти
                 </Button>
 
-                {/* Опасная зона */}
+                {/* Опасная зона: удаление аккаунта */}
                 <DangerZone onDeleteAccount={handleDeleteAccount} />
 
-                {/* Spacer для навбара */}
+                {/* Отступ для фиксированного навбара внизу */}
                 <div className="h-8" />
-            </motion.div>
+            </div>
         </div>
     )
 }

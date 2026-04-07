@@ -13,7 +13,7 @@ const statItems = [
     { key: 'wins' as const, label: 'Побед', icon: Trophy, color: 'text-yellow-600', bg: 'bg-yellow-500/10' },
     { key: 'thoughts' as const, label: 'Мыслей', icon: Brain, color: 'text-purple-600', bg: 'bg-purple-500/10' },
     { key: 'goals' as const, label: 'Целей', icon: Target, color: 'text-blue-600', bg: 'bg-blue-500/10' },
-    { key: 'contacts' as const, label: 'Контактов', icon: Users, color: 'text-green-600', bg: 'bg-green-500/10' }
+
 ]
 
 export function QuickStatsWidget({ stats }: QuickStatsWidgetProps) {

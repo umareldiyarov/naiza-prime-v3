@@ -6,6 +6,7 @@ export interface Win {
     title: string
     description?: string
     size: WinSize
+    goal_id?: string  // 🆕 ДОБАВИЛИ
     created_at: string
 }
 
@@ -13,4 +14,5 @@ export interface CreateWinData {
     title: string
     description?: string
     size: WinSize
+    goal_id?: string  // 🆕 ДОБАВИЛИ
 }

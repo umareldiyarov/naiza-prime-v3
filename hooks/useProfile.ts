@@ -1,5 +1,17 @@
 'use client'
 
+/**
+ * useProfile
+ * 
+ * Хук для управления профилем пользователя:
+ * - Загрузка и создание профиля
+ * - Быстрая статистика (количество побед, мыслей, целей)
+ * - Обновление профиля
+ * - Загрузка/удаление аватара
+ * - Выход из аккаунта
+ * - Удаление аккаунта
+ */
+
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, UpdateProfileData, QuickStats } from '@/types/profile'
@@ -13,8 +25,10 @@ export function useProfile() {
     const [uploading, setUploading] = useState(false)
     const supabase = createClient()
 
-
-    // Загрузка профиля и пользователя
+    /**
+     * Загружает профиль пользователя из базы
+     * Если профиля нет — создаёт новый
+     */
     const loadProfile = async () => {
         setLoading(true)
         try {
@@ -37,7 +51,7 @@ export function useProfile() {
                 .from('profiles')
                 .select('*')
                 .eq('user_id', authUser.id)
-                .maybeSingle() // Используем maybeSingle вместо single
+                .maybeSingle()
 
             if (profileError) {
                 console.error('Profile error:', profileError)
@@ -75,8 +89,10 @@ export function useProfile() {
         }
     }
 
-
-    // Загрузка быстрой статистики
+    /**
+     * Загружает быструю статистику для виджета профиля
+     * Подсчитывает количество побед, мыслей и целей
+     */
     const loadQuickStats = async () => {
         try {
             const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -86,32 +102,32 @@ export function useProfile() {
                 return
             }
 
-            const [winsData, thoughtsData, goalsData, contactsData] = await Promise.all([
+            // Загружаем количество записей параллельно
+            const [winsData, thoughtsData, goalsData] = await Promise.all([
                 supabase.from('wins').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
                 supabase.from('thoughts').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-                supabase.from('goals').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-                supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+                supabase.from('goals').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
             ])
 
             console.log('Quick stats loaded:', {
                 wins: winsData.count,
                 thoughts: thoughtsData.count,
-                goals: goalsData.count,
-                contacts: contactsData.count
+                goals: goalsData.count
             })
 
             setQuickStats({
                 wins: winsData.count || 0,
                 thoughts: thoughtsData.count || 0,
-                goals: goalsData.count || 0,
-                contacts: contactsData.count || 0
+                goals: goalsData.count || 0
             })
         } catch (error: any) {
             console.error('Error loading quick stats:', error.message || error)
         }
     }
 
-    // Обновление профиля
+    /**
+     * Обновляет данные профиля (имя, био, аватар и т.д.)
+     */
     const updateProfile = async (data: UpdateProfileData) => {
         if (!profile) return { error: new Error('No profile loaded') }
 
@@ -132,7 +148,10 @@ export function useProfile() {
         }
     }
 
-    // Загрузка аватара
+    /**
+     * Загружает аватар пользователя в Supabase Storage
+     * Удаляет старый аватар если есть
+     */
     const uploadAvatar = async (file: File) => {
         if (!user) return { error: new Error('Not authenticated') }
 
@@ -179,7 +198,9 @@ export function useProfile() {
         }
     }
 
-    // Удаление аватара
+    /**
+     * Удаляет аватар пользователя
+     */
     const deleteAvatar = async () => {
         if (!user || !profile?.avatar_url) return { error: new Error('No avatar to delete') }
 
@@ -198,13 +219,18 @@ export function useProfile() {
         }
     }
 
-    // Выход
+    /**
+     * Выход из аккаунта
+     */
     const signOut = async () => {
         await supabase.auth.signOut()
         window.location.href = '/login'
     }
 
-    // Удаление аккаунта
+    /**
+     * Удаляет аккаунт пользователя
+     * Очищает аватар, удаляет профиль (cascade удалит все связанные данные)
+     */
     const deleteAccount = async () => {
         if (!user) return { error: new Error('Not authenticated') }
 
@@ -214,7 +240,7 @@ export function useProfile() {
                 await deleteAvatar()
             }
 
-            // Удаляем все данные пользователя (cascade удалит всё автоматически)
+            // Удаляем профиль (cascade удалит всё автоматически)
             const { error: deleteError } = await supabase
                 .from('profiles')
                 .delete()
@@ -222,8 +248,7 @@ export function useProfile() {
 
             if (deleteError) throw deleteError
 
-            // Удаляем auth пользователя (требует admin права, нужно использовать Edge Function)
-            // Пока просто выходим
+            // Выходим из системы
             await signOut()
 
             return { error: null }
@@ -232,6 +257,7 @@ export function useProfile() {
         }
     }
 
+    // Загружаем профиль и статистику при монтировании
     useEffect(() => {
         loadProfile()
         loadQuickStats()

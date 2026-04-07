@@ -15,9 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'NAIZA PRIME',
-  description: 'Личный дневник побед и окружения',
+  description: 'Личный дневник побед, мыслей и целей', // ← убрал "окружения"
 }
-
 export default function RootLayout({
   children,
 }: Readonly<{

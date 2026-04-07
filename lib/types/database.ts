@@ -1,3 +1,15 @@
+/**
+ * database.ts
+ * 
+ * Типы для таблиц Supabase базы данных
+ * Автоматически генерируется из схемы БД
+ * 
+ * Таблицы:
+ * - wins: Победы пользователя
+ * - thoughts: Мысли и настроение
+ * - goals: Цели и задачи
+ */
+
 export type Json =
     | string
     | number
@@ -9,6 +21,7 @@ export type Json =
 export interface Database {
     public: {
         Tables: {
+            // Таблица побед
             wins: {
                 Row: {
                     id: string
@@ -29,6 +42,7 @@ export interface Database {
                     content?: string
                 }
             }
+            // Таблица мыслей
             thoughts: {
                 Row: {
                     id: string
@@ -52,6 +66,7 @@ export interface Database {
                     mood?: 'good' | 'neutral' | 'bad'
                 }
             }
+            // Таблица целей
             goals: {
                 Row: {
                     id: string
@@ -81,38 +96,11 @@ export interface Database {
                     deadline?: string | null
                 }
             }
-            contacts: {
-                Row: {
-                    id: string
-                    created_at: string
-                    user_id: string
-                    name: string
-                    relationship: string | null
-                    notes: string | null
-                }
-                Insert: {
-                    id?: string
-                    created_at?: string
-                    user_id: string
-                    name: string
-                    relationship?: string | null
-                    notes?: string | null
-                }
-                Update: {
-                    id?: string
-                    created_at?: string
-                    user_id?: string
-                    name?: string
-                    relationship?: string | null
-                    notes?: string | null
-                }
-            }
         }
     }
 }
 
-// Экспортируем типы для удобства
+// Экспортируем типы таблиц для удобства использования
 export type Win = Database['public']['Tables']['wins']['Row']
 export type Thought = Database['public']['Tables']['thoughts']['Row']
 export type Goal = Database['public']['Tables']['goals']['Row']
-export type Contact = Database['public']['Tables']['contacts']['Row']

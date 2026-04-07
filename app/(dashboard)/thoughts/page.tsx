@@ -1,32 +1,41 @@
 'use client'
 
+/**
+ * ThoughtsPage
+ * 
+ * Страница мыслей и настроения — использует глобальный DataContext
+ * Данные загружаются один раз при монтировании Layout
+ * Переключение между вкладками мгновенное, без загрузки
+ */
+
 import { useState } from 'react'
-import { useThoughts } from '@/hooks/useThoughts'
-import { Button } from '@/components/ui/button'
+import { useData } from '@/contexts/DataContext'
 import { Card } from '@/components/ui/card'
-import { motion } from 'framer-motion'
-import { Brain, Calendar, Loader2, Smile, Meh, Frown } from 'lucide-react'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogBody
-} from '@/components/ui/dialog'
+import { Brain, Plus, Loader2, Smile, Meh, Frown, Calendar as CalendarIcon } from 'lucide-react'
+import { CreateThoughtDialog } from '@/components/thoughts/CreateThoughtDialog'
+import { ThoughtDetailDialog } from '@/components/thoughts/ThoughtDetailDialog'
+import { ThoughtFilters } from '@/components/thoughts/ThoughtFilters'
+import { EditThoughtDialog } from '@/components/thoughts/EditThoughtDialog'
 
-const moodOptions = [
-    { value: 'good' as const, label: 'Позитивное', icon: Smile, color: 'from-green-500/20 to-emerald-500/20', iconColor: 'text-green-600' },
-    { value: 'neutral' as const, label: 'Нейтральное', icon: Meh, color: 'from-blue-500/20 to-cyan-500/20', iconColor: 'text-blue-600' },
-    { value: 'bad' as const, label: 'Негативное', icon: Frown, color: 'from-orange-500/20 to-red-500/20', iconColor: 'text-orange-600' },
-]
+// Типы
+type ThoughtFilterPeriod = 'today' | 'week' | 'month' | 'all'
 
+type Thought = {
+    id: string
+    content: string
+    mood: 'good' | 'neutral' | 'bad'
+    created_at: string
+    user_id: string
+}
+
+// Иконки для разных настроений
 const moodIcons = {
     good: Smile,
     neutral: Meh,
     bad: Frown
 }
 
+// Цвета для разных настроений
 const moodColors = {
     good: 'text-green-600',
     neutral: 'text-blue-600',
@@ -34,204 +43,209 @@ const moodColors = {
 }
 
 export default function ThoughtsPage() {
-    const [content, setContent] = useState('')
-    const [mood, setMood] = useState<'good' | 'neutral' | 'bad'>('neutral')
-    const [showHistory, setShowHistory] = useState(false)
-    const { thoughts, loading, loadThoughts, addThought } = useThoughts()
-    const [submitting, setSubmitting] = useState(false)
+    const [showAddThought, setShowAddThought] = useState(false)
+    const [period, setPeriod] = useState<ThoughtFilterPeriod>('today')
+    const [selectedThought, setSelectedThought] = useState<Thought | null>(null)
+    const [showThoughtDetail, setShowThoughtDetail] = useState(false)
+    const [showEditThought, setShowEditThought] = useState(false)
 
-    const handleAddThought = async () => {
-        if (!content.trim()) return
+    // Получаем данные из глобального контекста
+    const { thoughts, thoughtsLoading: loading, refreshThoughts } = useData()
 
-        setSubmitting(true)
-        const { error } = await addThought({
-            content: content.trim(),
-            mood
-        })
+    // Фильтрация мыслей по периоду
+    const filterThoughtsByPeriod = (period: ThoughtFilterPeriod): Thought[] => {
+        const now = new Date()
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-        if (!error) {
-            setContent('')
-            setMood('neutral')
-
+        switch (period) {
+            case 'today':
+                return thoughts.filter(thought => {
+                    const thoughtDate = new Date(thought.created_at)
+                    return thoughtDate >= today
+                })
+            case 'week':
+                const weekAgo = new Date(today)
+                weekAgo.setDate(weekAgo.getDate() - 7)
+                return thoughts.filter(thought => {
+                    const thoughtDate = new Date(thought.created_at)
+                    return thoughtDate >= weekAgo
+                })
+            case 'month':
+                const monthAgo = new Date(today)
+                monthAgo.setMonth(monthAgo.getMonth() - 1)
+                return thoughts.filter(thought => {
+                    const thoughtDate = new Date(thought.created_at)
+                    return thoughtDate >= monthAgo
+                })
+            case 'all':
+            default:
+                return thoughts
         }
-        setSubmitting(false)
     }
 
-    const handleOpenHistory = async () => {
-        if (thoughts.length === 0) {
-            await loadThoughts()
-        }
-        setShowHistory(true)
+    // Группировка мыслей по датам
+    const groupThoughtsByDate = (thoughts: Thought[]) => {
+        const groups: { [key: string]: Thought[] } = {}
+
+        thoughts.forEach(thought => {
+            const date = new Date(thought.created_at)
+            const dateKey = date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            })
+
+            if (!groups[dateKey]) {
+                groups[dateKey] = []
+            }
+            groups[dateKey].push(thought)
+        })
+
+        return groups
+    }
+
+    // Фильтруем мысли по выбранному периоду
+    const filteredThoughts = filterThoughtsByPeriod(period)
+    // Группируем мысли по датам для отображения
+    const groupedThoughts = groupThoughtsByDate(filteredThoughts)
+
+    // Форматирование времени
+    const formatTime = (date: string) => {
+        return new Date(date).toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+        })
+    }
+
+    // Обработчик клика по мысли — открывает детальный просмотр
+    const handleThoughtClick = (thought: Thought) => {
+        setSelectedThought(thought)
+        setShowThoughtDetail(true)
     }
 
     return (
         <>
-            <div className="min-h-screen p-6 pb-32">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="max-w-2xl mx-auto space-y-6"
-                >
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-3">
-                                <Brain className="w-8 h-8 text-primary" strokeWidth={2} />
-                                <h1 className="text-3xl font-bold tracking-tight">Мысли</h1>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                                Фиксируйте важные мысли и инсайты
-                            </p>
+            <div className="min-h-screen pb-32">
+                <div className="space-y-6 p-6">
+                    {/* Заголовок */}
+                    <div className="space-y-1 text-center">
+                        <div className="flex items-center justify-center gap-3">
+                            <Brain className="w-8 h-8 text-primary" strokeWidth={2} />
+                            <h1 className="text-3xl font-bold tracking-tight">Мысли</h1>
                         </div>
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={handleOpenHistory}
-                            className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 rounded-xl transition-colors"
-                        >
-                            История
-                        </motion.button>
+                        <p className="text-sm text-muted-foreground">
+                            Фиксируйте важные мысли и инсайты
+                        </p>
                     </div>
 
-                    {/* Input Card */}
-                    <Card className="overflow-hidden border-primary/20">
-                        <div className="p-6 space-y-4">
-                            {/* Mood Selector */}
-                            <div className="grid grid-cols-3 gap-2">
-                                {moodOptions.map((m) => {
-                                    const Icon = m.icon
-                                    return (
-                                        <motion.button
-                                            key={m.value}
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            onClick={() => setMood(m.value)}
-                                            className={`relative py-3 rounded-xl text-sm font-medium transition-all overflow-hidden ${mood === m.value
-                                                ? 'text-foreground shadow-md'
-                                                : 'text-muted-foreground hover:text-foreground'
-                                                }`}
-                                        >
-                                            {mood === m.value && (
-                                                <motion.div
-                                                    layoutId="moodBg"
-                                                    className={`absolute inset-0 bg-gradient-to-br ${m.color}`}
-                                                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                                                />
-                                            )}
-                                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                                <Icon className={`w-4 h-4 ${mood === m.value ? m.iconColor : ''}`} strokeWidth={2} />
-                                                {m.label}
-                                            </span>
-                                        </motion.button>
-                                    )
-                                })}
-                            </div>
+                    {/* Фильтры по периодам */}
+                    <ThoughtFilters period={period} onPeriodChange={setPeriod} />
 
-                            <textarea
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Запишите вашу мысль или наблюдение..."
-                                className="w-full min-h-[140px] p-4 rounded-xl border-0 bg-muted/30 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 text-base placeholder:text-muted-foreground/60 transition-all"
-                            />
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">
-                                    {content.length > 0 && `${content.length} символов`}
-                                </span>
-                                <Button
-                                    onClick={handleAddThought}
-                                    disabled={submitting || !content.trim()}
-                                    className="rounded-xl px-6 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                                >
-                                    {submitting ? (
-                                        <span className="flex items-center gap-2">
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            Сохранение...
-                                        </span>
-                                    ) : (
-                                        'Добавить запись'
-                                    )}
-                                </Button>
-                            </div>
+                    {/* Список мыслей */}
+                    {loading ? (
+                        // Лоадер при загрузке
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
                         </div>
-                    </Card>
-                </motion.div>
-            </div>
-
-            {/* History Modal */}
-            <Dialog open={showHistory} onOpenChange={setShowHistory}>
-                <DialogContent>
-                    <DialogHeader onClose={() => setShowHistory(false)}>
-                        <div>
-                            <DialogTitle>История мыслей</DialogTitle>
-                            <DialogDescription>
-                                Все ваши зафиксированные мысли и инсайты
-                            </DialogDescription>
+                    ) : filteredThoughts.length === 0 ? (
+                        // Пустое состояние
+                        <div className="text-center py-12">
+                            <Brain className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" strokeWidth={1.5} />
+                            <p className="text-muted-foreground">
+                                {period === 'today' ? 'Сегодня мыслей пока нет' : 'Мыслей за этот период нет'}
+                            </p>
                         </div>
-                    </DialogHeader>
+                    ) : (
+                        // Список мыслей, сгруппированных по датам
+                        <div className="space-y-6">
+                            {Object.entries(groupedThoughts).map(([date, dateThoughts]) => (
+                                <div key={date} className="space-y-3">
+                                    {/* Разделитель даты */}
+                                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                                        <CalendarIcon className="w-4 h-4" />
+                                        {date}
+                                    </div>
 
-                    <DialogBody>
-                        {loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                            </div>
-                        ) : thoughts.length === 0 ? (
-                            <div className="text-center py-12">
-                                <Brain className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" strokeWidth={1.5} />
-                                <p className="text-muted-foreground">
-                                    Записей пока нет. Добавьте первую мысль.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {thoughts.map((t, index) => {
-                                    const MoodIcon = moodIcons[t.mood]
-                                    const moodColor = moodColors[t.mood]
+                                    {/* Мысли в эту дату */}
+                                    {dateThoughts.map((thought) => {
+                                        const MoodIcon = moodIcons[thought.mood]
+                                        const moodColor = moodColors[thought.mood]
 
-                                    return (
-                                        <motion.div
-                                            key={t.id}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: index * 0.03 }}
-                                        >
-                                            <Card className="p-5 hover:shadow-lg transition-all cursor-pointer group border-border/50">
-                                                <div className="flex items-start gap-4">
-                                                    <div className="mt-0.5">
-                                                        <MoodIcon
-                                                            className={`w-5 h-5 ${moodColor} group-hover:scale-110 transition-transform`}
-                                                            strokeWidth={2}
-                                                        />
-                                                    </div>
-                                                    <div className="flex-1 space-y-2">
-                                                        <p className="text-sm leading-relaxed text-foreground">
-                                                            {t.content}
-                                                        </p>
-                                                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Calendar className="w-3.5 h-3.5" />
-                                                                <time>
-                                                                    {new Date(t.created_at).toLocaleString('ru-RU', {
-                                                                        day: 'numeric',
-                                                                        month: 'long',
-                                                                        year: 'numeric',
-                                                                        hour: '2-digit',
-                                                                        minute: '2-digit',
-                                                                    })}
-                                                                </time>
-                                                            </div>
+                                        return (
+                                            <div key={thought.id}>
+                                                <Card
+                                                    className="p-5 hover:shadow-lg transition-all cursor-pointer"
+                                                    onClick={() => handleThoughtClick(thought)}
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        {/* Иконка настроения */}
+                                                        <div className="mt-0.5">
+                                                            <MoodIcon
+                                                                className={`w-5 h-5 ${moodColor}`}
+                                                                strokeWidth={2}
+                                                            />
+                                                        </div>
+                                                        {/* Контент мысли */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm leading-relaxed mb-2 line-clamp-3">
+                                                                {thought.content}
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {formatTime(thought.created_at)}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </Card>
-                                        </motion.div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </DialogBody>
-                </DialogContent>
-            </Dialog>
+                                                </Card>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Фиксированная кнопка добавления внизу экрана */}
+            <div className="fixed bottom-20 left-4 right-4 z-50 max-w-md mx-auto">
+                <Card
+                    onClick={() => setShowAddThought(true)}
+                    className="p-4 cursor-pointer hover:shadow-lg transition-all border-dashed border-2 border-primary/30 hover:border-primary/50 bg-background"
+                >
+                    <div className="flex items-center justify-center gap-3 text-primary">
+                        <Plus className="w-5 h-5" strokeWidth={2} />
+                        <span className="font-medium">Добавить мысль</span>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Диалог создания новой мысли */}
+            <CreateThoughtDialog
+                open={showAddThought}
+                onOpenChange={setShowAddThought}
+                onSuccess={refreshThoughts}
+            />
+
+            {/* Диалог детального просмотра мысли */}
+            <ThoughtDetailDialog
+                thought={selectedThought}
+                open={showThoughtDetail}
+                onOpenChange={setShowThoughtDetail}
+                onEdit={(thought) => {
+                    setSelectedThought(thought)
+                    setShowThoughtDetail(false)
+                    setShowEditThought(true)
+                }}
+                onDelete={refreshThoughts}
+            />
+
+            {/* Диалог редактирования мысли */}
+            <EditThoughtDialog
+                thought={selectedThought}
+                open={showEditThought}
+                onOpenChange={setShowEditThought}
+                onSuccess={refreshThoughts}
+            />
         </>
     )
 }
